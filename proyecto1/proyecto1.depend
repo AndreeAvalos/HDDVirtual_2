@@ -1,0 +1,10 @@
+# depslib dependency file v1.0
+1533436879 source:/home/andree/Escritorio/proyecto1/main.c
+	<stdio.h>
+	<stdlib.h>
+	<setjmp.h>
+	<string.h>
+	<ctype.h>
+	<time.h>
+	<math.h>
+
