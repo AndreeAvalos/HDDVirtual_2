@@ -13,6 +13,7 @@
 //==============================================Area de Variables Globales=========================================
 #pragma region Globales
 char linea[500]; //Arreglo de char donde se contendra la linea de comando
+int comentario=False;//variable que comprueba si es un comentario
 int SalirPrograma = False;//Bandera para indicar el fin del programa
 int sizeArchivo=0;//indica el tamano
 int addParticion=0;//indica el tamano, si se quita o agrega a la particion
@@ -42,8 +43,8 @@ int executable[1]= {False};
 typedef struct
 {
     int part_status;
-    char *part_type;
-    char *part_fit;
+    char part_type;
+    char part_fit;
     int part_start;
     int part_size;
     char part_name[16];
@@ -149,6 +150,7 @@ NodoPrincipal*crearNodoPrincipal(char* r)
 {
     NodoPrincipal* nuevo = (NodoPrincipal*)malloc(sizeof(NodoPrincipal));
     nuevo->nameDisco=r;
+    printf("Ruta disco: %s\n\n",nuevo->nameDisco);
     nuevo->abajo=nuevo->arriba=NULL;
     nuevo->siguiente=nuevo->anterior=NULL;
     nuevo->numeroDisco=asignarNumero();
@@ -186,6 +188,7 @@ NodoPrincipal* buscarPrincipal(NodoPrincipal* p,char* r)
     }
     return NULL;
 }
+
 NodoPrincipal *insertarPrincipal(NodoPrincipal**p,char* r)
 {
 
@@ -360,6 +363,7 @@ void *insertarl(Nodo **s,int numero, int indice)
 #pragma endregion Estructuras
 MBR getMBR(char *path);
 Particion crearParticion(int inicio);
+Particion getExtendida(MBR mbr);
 int main()
 {
     printf("--------------Primer Proyecto de Manejo e Implementos de Archivos------------\n");
@@ -376,6 +380,7 @@ void consola()
         printf("                       --Ingrese el Comando a Realizar--\n");
         scanf("%[^\n]", linea);
         while(getchar()!='\n');
+        stchcat(linea,'\n');
         LowerCase(linea);
         Menu(linea);
     }
@@ -383,15 +388,29 @@ void consola()
 
 void LowerCase(char cadena[200])//metodo para parsear sin espacios y convertirlo en minusculas
 {
-
+    comentario=False;
     char temporal[200];//variable que guardara la palabra de manera temporal
     int contador=0;//contador que se utilizara para guardar la posicion en el temporal
     for(int i=0; i<200; i++)
     {
         //Si viene salto de linea, y retorno de carro
-        if(cadena[i]==10||cadena[i]==13)
+        if(cadena[i]==10||cadena[i]==13||cadena[i]==12)
         {
 
+        }
+
+        else if(cadena[i]==35)
+        {
+            i++;
+            int salir =False;
+
+            while(salir!=True)
+            {
+                if(cadena[i]=='\n')
+                    salir=True;
+                i++;
+            }
+            comentario=True;
         }
         else
         {
@@ -443,144 +462,147 @@ void LowerCase(char cadena[200])//metodo para parsear sin espacios y convertirlo
 
 void Menu(char *linea)
 {
-    char separador[] =" ";
-    char *trozo = NULL;//Trozo el cual recoge el modulo que se va a ejecutar
-    trozo = strtok(linea, separador);//el primer trozo indica que comando vamos a utilizar
-    if(strcmp(trozo, "exit") == 0)
+    if(strlen(linea)>0)
     {
-        SalirPrograma=True;
-        return;
-    }
-    else if(strcmp(trozo, "mkdisk") == 0)
-    {
-        //Imprimimos que esta en el menu de creacion de archivos
-        printf("\n*************************************\n");
-        printf("* Ingreso a la creacion de Archivos *\n");
-        printf("*************************************\n");
-        char *parametros[4];//arreglo para guardar los parametros de la creacion de un archivo binario
-        int i =0;//contador de parametros
-        int salir_ciclo=False;//bandera para salir de ciclo
-        while(salir_ciclo!=True)
+        char separador[] =" ";
+        char *trozo = NULL;//Trozo el cual recoge el modulo que se va a ejecutar
+        trozo = strtok(linea, separador);//el primer trozo indica que comando vamos a utilizar
+        if(strcmp(trozo, "exit") == 0)
         {
-            parametros[i]=trozo;//array de parametros
-            trozo = strtok( NULL, separador);//hacemos el proximo split
-            i++;
-            if(trozo==NULL)
-                salir_ciclo=True;
-            else
-                salir_ciclo=False;
+            SalirPrograma=True;
+            return;
         }
-        //llamamos el metodo MKDISK para optener los valores y crear el archivo
-        MKDISK(parametros[0],parametros[1],parametros[2],parametros[3]);
-        return;
-
-    }
-    else if(strcmp(trozo,"rmdisk")==0)
-    {
-        //Imprimimos que esta en el menu de eliminacion de archivos
-        printf("\n****************************************\n");
-        printf("* Ingreso a la Eliminacion de Archivos *\n");
-        printf("****************************************\n");
-        char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
-        for(int i=0; i<2; i++)//for que recorre en busca de - para hacer split
+        else if(strcmp(trozo, "mkdisk") == 0)
         {
-            parametros[i]=trozo; //guardamos el trozo de cadena
-            trozo = strtok( NULL, separador); //hacemos el proximo split
+            //Imprimimos que esta en el menu de creacion de archivos
+            printf("\n*************************************\n");
+            printf("* Ingreso a la creacion de Archivos *\n");
+            printf("*************************************\n");
+            char *parametros[4];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            //llamamos el metodo MKDISK para optener los valores y crear el archivo
+            MKDISK(parametros[0],parametros[1],parametros[2],parametros[3]);
+            return;
 
         }
-        RMDISK(parametros[0],parametros[1]); //llamamos el metodo MKDISK para optener los valores y crear el archivo
-        return;
+        else if(strcmp(trozo,"rmdisk")==0)
+        {
+            //Imprimimos que esta en el menu de eliminacion de archivos
+            printf("\n****************************************\n");
+            printf("* Ingreso a la Eliminacion de Archivos *\n");
+            printf("****************************************\n");
+            char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
+            for(int i=0; i<2; i++)//for que recorre en busca de - para hacer split
+            {
+                parametros[i]=trozo; //guardamos el trozo de cadena
+                trozo = strtok( NULL, separador); //hacemos el proximo split
 
-    }
-    else if(strcmp(trozo,"fdisk")==0)
-    {
-        //Imprimimos que esta en el menu de creacion de particiones
-        printf("\n***************************************\n");
-        printf("* Ingreso a la Modificacion de Discos *\n");
-        printf("***************************************\n");
-        char *parametros[8];//arreglo para guardar los parametros de la creacion de un archivo binario
-        int i =0;//contador de parametros
-        int salir_ciclo=False;//bandera para salir de ciclo
-        while(salir_ciclo!=True)
-        {
-            parametros[i]=trozo;//array de parametros
-            trozo = strtok( NULL, separador);//hacemos el proximo split
-            i++;
-            if(trozo==NULL)
-                salir_ciclo=True;
-            else
-                salir_ciclo=False;
-        }
-        //llamamos el metodo MKDISK para optener los valores y crear el archivo
-        FDISK(parametros[0],parametros[1],parametros[2],parametros[3],parametros[4],parametros[5],parametros[6],parametros[7]);
-        return;
+            }
+            RMDISK(parametros[0],parametros[1]); //llamamos el metodo MKDISK para optener los valores y crear el archivo
+            return;
 
-    }
-    else if(strcmp(trozo,"exec")==0)
-    {
-        //Imprimimos que esta en el menu de creacion de particiones
-        printf("\n************************************\n");
-        printf("* Ingreso a la Carga de Archivos   *\n");
-        printf("************************************\n");
-        char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
-        int i =0;//contador de parametros
-        int salir_ciclo=False;//bandera para salir de ciclo
-        while(salir_ciclo!=True)
-        {
-            parametros[i]=trozo;//array de parametros
-            trozo = strtok( NULL, separador);//hacemos el proximo split
-            i++;
-            if(trozo==NULL)
-                salir_ciclo=True;
-            else
-                salir_ciclo=False;
         }
-        EXECUTABLE(parametros[0],parametros[1]);
-        return;
-    }
-    else if(strcmp(trozo,"mount")==0)
-    {
-        //Imprimimos que esta en el menu de creacion de particiones
-        printf("\n*********************************\n");
-        printf("* Ingreso a Montar Particiones  *\n");
-        printf("*********************************\n");
-        char *parametros[3];//arreglo para guardar los parametros de la creacion de un archivo binario
-        int i =0;//contador de parametros
-        int salir_ciclo=False;//bandera para salir de ciclo
-        while(salir_ciclo!=True)
+        else if(strcmp(trozo,"fdisk")==0)
         {
-            parametros[i]=trozo;//array de parametros
-            trozo = strtok( NULL, separador);//hacemos el proximo split
-            i++;
-            if(trozo==NULL)
-                salir_ciclo=True;
-            else
-                salir_ciclo=False;
+            //Imprimimos que esta en el menu de creacion de particiones
+            printf("\n***************************************\n");
+            printf("* Ingreso a la Modificacion de Discos *\n");
+            printf("***************************************\n");
+            char *parametros[8];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            //llamamos el metodo MKDISK para optener los valores y crear el archivo
+            FDISK(parametros[0],parametros[1],parametros[2],parametros[3],parametros[4],parametros[5],parametros[6],parametros[7]);
+            return;
+
         }
-        MOUNT(parametros[0],parametros[1],parametros[2]);
-        return;
-    }
-    else if(strcmp(trozo,"unmount")==0)
-    {
-        //Imprimimos que esta en el menu de creacion de particiones
-        printf("\n************************************\n");
-        printf("* Ingreso a Desmontar Particiones  *\n");
-        printf("************************************\n");
-        char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
-        int i =0;//contador de parametros
-        int salir_ciclo=False;//bandera para salir de ciclo
-        while(salir_ciclo!=True)
+        else if(strcmp(trozo,"exec")==0)
         {
-            parametros[i]=trozo;//array de parametros
-            trozo = strtok( NULL, separador);//hacemos el proximo split
-            i++;
-            if(trozo==NULL)
-                salir_ciclo=True;
-            else
-                salir_ciclo=False;
+            //Imprimimos que esta en el menu de creacion de particiones
+            printf("\n************************************\n");
+            printf("* Ingreso a la Carga de Archivos   *\n");
+            printf("************************************\n");
+            char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            EXECUTABLE(parametros[0],parametros[1]);
+            return;
         }
-        UNMOUNT(parametros[0],parametros[1]);
-        return;
+        else if(strcmp(trozo,"mount")==0)
+        {
+            //Imprimimos que esta en el menu de creacion de particiones
+            printf("\n*********************************\n");
+            printf("* Ingreso a Montar Particiones  *\n");
+            printf("*********************************\n");
+            char *parametros[3];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            MOUNT(parametros[0],parametros[1],parametros[2]);
+            return;
+        }
+        else if(strcmp(trozo,"unmount")==0)
+        {
+            //Imprimimos que esta en el menu de creacion de particiones
+            printf("\n************************************\n");
+            printf("* Ingreso a Desmontar Particiones  *\n");
+            printf("************************************\n");
+            char *parametros[2];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            UNMOUNT(parametros[0],parametros[1]);
+            return;
+        }
     }
 }
 //================================================Creacion de Discos=============================================
@@ -854,7 +876,12 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
 
                     else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True)
                     {
-                        //crear particiones logicas en la extendida.
+                        Particion extendida = getExtendida(getMBR(pathArchivo));//obtenemos el mbr luego la particion extendida
+                        crearLogica(extendida.part_start);
+                        printf("-------------------Particion Logica Creada con Exito--------------------\n");
+                        printf("--------------------------------------------------------------------------\n\n");
+
+
                     }
                     else
                     {
@@ -867,6 +894,12 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
             }
             else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True) //si la particion es logica
             {
+                MBR aux = getMBR(pathArchivo);
+                //printf("RUTA DEL MBR: %s",pathArchivo);
+                Particion extendida = getExtendida(aux);//obtenemos el mbr luego la particion extendida
+                crearLogica(extendida.part_start);
+                printf("-------------------Particion Logica Creada con Exito--------------------\n");
+                printf("--------------------------------------------------------------------------\n\n");
 
             }
             else
@@ -962,10 +995,18 @@ Particion crearParticion(int inicio)
     Particion part;
     part.part_start=inicio;
     part.part_status=True;
-    part.part_fit=fitParticion;
-    strcpy(part.part_name,nameParticion);
-    part.part_type=typeParticion;
+    if(strcmp(fitParticion,"bf")==0)
+        part.part_fit='b';
+    else if(strcmp(fitParticion,"wf")==0)
+        part.part_fit='w';
+    else if(strcmp(fitParticion,"ff")==0)
+        part.part_fit='f';
+    if(strcmp(typeParticion,"p")==0)
+        part.part_type='p';
+    else if(strcmp(typeParticion,"e")==0)
+        part.part_type='e';
 
+    strcpy(part.part_name,nameParticion);
     if(strcmp(unitArchivo,"m")==0)
         part.part_size=megabytes;
     else if(strcmp(unitArchivo,"k")==0)
@@ -980,11 +1021,15 @@ Particion crearParticion(int inicio)
 
 MBR getMBR(char *path)
 {
-    FILE *archivo = fopen(path,"rb");
+    FILE *archivo = fopen(path,"rb+");
     MBR mbrActual;
-    fseek(archivo,0,SEEK_CUR);//posicionamos el puntero al principio del archivo
-    fread(&mbrActual,sizeof(MBR),1,archivo);//leemos el mbr
-    fclose(archivo);
+    if(archivo!=NULL)
+    {
+
+        fseek(archivo,0,SEEK_CUR);//posicionamos el puntero al principio del archivo
+        fread(&mbrActual,sizeof(MBR),1,archivo);//leemos el mbr
+        fclose(archivo);
+    }
     return mbrActual;
 }
 
@@ -1012,9 +1057,13 @@ void crearMBR(char *ruta)
     printf("Ruta donde se creara: %s \n",ruta);
 
     FILE *archivo = fopen(ruta,"r");
-    fseek(archivo, 0, SEEK_END);
-    tamano_disco=ftell(archivo);
-    fclose(archivo);
+    if(archivo!=NULL)
+    {
+        fseek(archivo, 0, SEEK_END);
+        tamano_disco=ftell(archivo);
+        fclose(archivo);
+    }
+
     archivo = fopen(ruta,"rb+");
     if(archivo)
     {
@@ -1044,28 +1093,185 @@ void crearMBR(char *ruta)
     }
 }
 
+Particion getExtendida(MBR mbr) //metodo que traera la particion extendida;
+{
+    int i=0;
+    int salir= False;
+    while(salir!=True)
+    {
+        if(mbr.part[i]==1)
+        {
+            if(mbr.particion[i].part_type=='e')
+                return mbr.particion[i];
+        }
+        i++;
+    }
+    Particion part;
+    return part;
 
+}
+
+void crearLogica(int inicio)
+{
+    int bt=sizeArchivo;
+    int bytes = bt*8; //bytes a poner en el archivo
+    int kilobytes = bt*1024;//kilobytes en el archivo
+    int megabytes =kilobytes*1024;//megabytes en el archivo
+
+    int tamano_restante=tamano_disco-inicio;
+
+    EBR ebr;
+    FILE *archivo =fopen(pathArchivo,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        if(ebr.part_next==0)
+        {
+            EBR ebr_nuevo;
+            ebr_nuevo.part_corrupt=4;
+            if(strcmp(fitParticion,"bf")==0)
+                ebr_nuevo.part_fit='b';
+            else if(strcmp(fitParticion,"wf")==0)
+                ebr_nuevo.part_fit='w';
+            else if(strcmp(fitParticion,"ff")==0)
+                ebr_nuevo.part_fit='f';
+
+            ebr_nuevo.part_next=-1;
+            strcpy(ebr_nuevo.part_name,nameParticion);
+
+            if(strcmp(unitArchivo,"m")==0)
+                ebr_nuevo.part_size=megabytes;
+            else if(strcmp(unitArchivo,"k")==0)
+                ebr_nuevo.part_size=kilobytes;
+            else if(strcmp(unitArchivo,"b")==0)
+                ebr_nuevo.part_size=bytes;
+            ebr_nuevo.part_start=inicio;
+            ebr_nuevo.part_status=0;
+
+            FILE *temp =fopen(pathArchivo,"rb+");
+            fseek(temp,inicio,SEEK_SET);
+            fwrite(&ebr_nuevo,sizeof(EBR),1,temp);
+            fclose(temp);
+        }
+        else if(ebr.part_next==-1)
+        {
+            ebr.part_next=(ebr.part_start+ebr.part_size);
+
+            archivo =fopen(pathArchivo,"rb+");
+            fseek(archivo,inicio,SEEK_CUR);
+            fwrite(&ebr,sizeof(EBR),1,archivo);
+            fclose(archivo);
+            crearLogica(ebr.part_next);
+        }
+        else
+        {
+            crearLogica(ebr.part_next);
+        }
+    }
+
+}
 #pragma endregion FDISK
+int contadorprueba=0;
 //=============================================Fin Particionar de Discos=============================================
 #pragma region MOUNT
 void MOUNT(char *cmd, char *path, char *name)
 {
     mount[0]=False;
     mount[1]=False;
+    contadorprueba++;
 
     split(path,cmd);
     split(name,cmd);
 
+
     if(mount[0]==True&&mount[1]==True)
     {
-        insertar(&primero,path,name);
-        printf("------------------Vista de Particiones Montadas---------------\n");
-        imprimir(primero);
+
+        if(existeParticion(pathArchivo,nameParticion)==True)
+        {
+            char *aux=malloc(30);
+            char *aux2=malloc(30);
+
+            strcpy(aux,pathArchivo);
+            strcpy(aux2,nameParticion);
+
+            insertar(&primero,aux,aux2);
+            printf("------------------Vista de Particiones Montadas---------------\n");
+            imprimir(primero);
+        }
+        else
+        {
+            printf("El directorio %s no contiene ninguna particion llamada %s \n\n",pathArchivo,nameParticion);
+        }
     }
     else
     {
         printf("------------No se puede montar la particion-----------\n");
     }
+
+}
+int existeParticion(char *path,char *nombre)
+{
+    FILE *archivo = fopen(path,"rb");
+    if (archivo != NULL)
+    {
+        MBR mbrActual;
+        fseek(archivo,0,SEEK_CUR);//posicionamos el puntero al principio del archivo
+        fread(&mbrActual,sizeof(MBR),1,archivo);//leemos el mbr
+        fclose(archivo);
+
+        for(int i=0; i<4; i++)
+        {
+            if(mbrActual.part[i]==True)
+            {
+                if(strcmp(mbrActual.particion[i].part_name,nombre)==0)
+                    return True;
+                if(mbrActual.particion[i].part_type=='e')
+                {
+                    printf("INICIO DE EXTENDIDA: %d\n",mbrActual.particion[i].part_start);
+                    return existeLogica(mbrActual.particion[i].part_start);
+                }
+            }
+        }
+    }
+    return False;
+}
+
+int existeLogica(int inicio)
+{
+
+    EBR ebr;
+    FILE *archivo =fopen(pathArchivo,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        if(ebr.part_next==0)
+            return False;
+        else if(ebr.part_next==-1)
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+                return True;
+            else
+                return False;
+        }
+        else
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+                return True;
+            else
+                return existeLogica(ebr.part_next);
+        }
+    }
+    else
+    {
+        return False;
+    }
+
+
 
 }
 
@@ -1077,7 +1283,8 @@ void UNMOUNT(char *cmd, char *id)
     unmount[0]=False;
 
     split(id,cmd);
-    if(unmount[0]) {
+    if(unmount[0])
+    {
         eliminar(&primero,idParticion);
         printf("------------------Vista de Particiones Montadas---------------\n");
         imprimir(primero);
@@ -1109,6 +1316,7 @@ void EXECUTABLE(char *cmd, char*ruta)
         while (fgets(linea, 500, entrada) != NULL)
         {
             printf("%s\n",linea);
+            stchcat(linea,'\n');
             LowerCase(linea);
             Menu(linea);
         }
@@ -1117,7 +1325,7 @@ void EXECUTABLE(char *cmd, char*ruta)
         fclose(entrada);
     }
     else
-        printf("No se puede Montar disco por falta de parametros\n");
+        printf("No se puede abrir archivo por falta de parametros\n");
     printf("********************* Proceso Terminado ************************\n");
     printf("\n");
 }
@@ -1293,5 +1501,3 @@ void separarRuta(char *ruta)
     strcpy(carpetaArchivo,rutaDef); //copiamos el directorio de carpetas a la variable global
 
 }
-
-
