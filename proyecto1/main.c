@@ -21,6 +21,8 @@ int MBR_Size=512;//indica el tamano reservado para el MBR
 char *pathArchivo=NULL,*unitArchivo=NULL,*tipoArchivo=NULL,*carpetaArchivo[30];
 char *typeParticion=NULL,*deleteParticion=NULL,*fitParticion=NULL,*nameParticion=NULL;
 char *idParticion=NULL;
+int creada=False;//si se crea la particion logica
+int contador_sub=1;//contador de subgrafos
 int tamanoLista=0;//contador de tamano de lista principal
 char letras[25]= {'a','b','c','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'};//numero maximo de particiones activas
 int tamano_disco=0;
@@ -34,6 +36,7 @@ int fdisk[8]= {False,False,False,False,False,False,False,False}; //(size,unit,pa
 int mount[2]= {False,False}; //(path,name)
 int unmount[1]= {False};//(id)
 int executable[1]= {False};
+int rep[3]= {False,False,False}; //(id,path,name)
 
 #pragma endregion Validaciones
 //=================================================================================================================
@@ -81,6 +84,7 @@ typedef struct nodoSecundario//estructura para lista secundaria
     int numeroParticion;//guardara el numero asignado a la particion
     char *id;//guardara "vb"+letra
     char *idNumero;//guardara "vb"+letra+numero
+    char *ruta;
     struct nodoSecundario *siguiente, *anterior;//enlaces para lista secundaria
 } NodoSec;
 
@@ -95,18 +99,19 @@ typedef struct nodoPrincipal//estructura para lista principal
 } NodoPrincipal;
 
 NodoPrincipal*insertarPrincipal(NodoPrincipal**p, char* r);
-void insertarSecundario(NodoSec **s,char* d,char *part);
+void insertarSecundario(NodoSec **s,char* d,char *part,char *ruta);
 NodoPrincipal*crearNodoPrincipal(char* r);
-NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part);
+NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *ruta);
 NodoPrincipal*buscarPrincipal(NodoPrincipal*p,char* r);
 void imprimir(NodoPrincipal*p);
 NodoPrincipal *primero;
+char *getRuta(NodoPrincipal **p, char *id);
 
 void insertar(NodoPrincipal ** p, char* row, char* dato)//metodo para insertar un nuevo nodo
 {
     NodoPrincipal*principal = insertarPrincipal(p,row);//crea un nodo, lo inserta y lo devuelve
     principal->tamano++;//incrementamos el tamano de la lista secundaria
-    insertarSecundario(&(principal->siguiente),dato,principal->id);//insertamos el nodo secundario dentro del principal devuelto
+    insertarSecundario(&(principal->siguiente),dato,principal->id,principal->nameDisco);//insertamos el nodo secundario dentro del principal devuelto
 }
 void eliminar(NodoPrincipal **p,char *id)//eliminar un nodo por nombre de montura
 {
@@ -120,7 +125,7 @@ void eliminar(NodoPrincipal **p,char *id)//eliminar un nodo por nombre de montur
             if(strcmp(id,fila->idNumero)==0)//condicional si el nodo con el id
             {
                 printf("Se encontro la particion \n");
-                printf("Particion a eliminar con id: %s \n",id);
+                printf("Particion a desmontar con id: %s \n",id);
                 if(fila->anterior!=NULL)//mientras exista anterior a donde regresar lo tomamos
                     fila->anterior->siguiente=fila->siguiente;//el siguiente del valor anterior sera el siguiente del actual
                 else//de lo contrario, hacemos como primero al siguiente
@@ -161,13 +166,16 @@ NodoPrincipal*crearNodoPrincipal(char* r)
     nuevo->tamano=0;
     return nuevo;
 }
-NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part)
+NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *rutaa)
 {
     NodoSec* nuevo = (NodoSec*)malloc(sizeof(NodoSec));
     nuevo->id = d;
     nuevo->numeroParticion=asignarParticion(&s);
     char *nombrePart = malloc(30);
     strcpy(nombrePart,part);
+    char *nombreRuta=malloc(200);
+    strcpy(nombreRuta,rutaa);
+    nuevo->ruta=nombreRuta;
     char c = '0'+nuevo->numeroParticion;
     stchcat(nombrePart,c);
     printf("Se monto particion como: %s\n\n",nombrePart);
@@ -212,9 +220,9 @@ NodoPrincipal *insertarPrincipal(NodoPrincipal**p,char* r)
     }
 
 }
-void insertarSecundario(NodoSec **s, char* d,char *part)
+void insertarSecundario(NodoSec **s, char* d,char *part,char *ruta)
 {
-    NodoSec * nuevo= crearNodoSecundario((*s),d,part);
+    NodoSec * nuevo= crearNodoSecundario((*s),d,part,ruta);
     if(*s!=NULL)
     {
         nuevo->siguiente=*s;
@@ -309,6 +317,31 @@ void stchcat(char *cadena, char chr)
     *(cadena + longitud) = chr;
     *(cadena + longitud + 1) = '\0';
 }
+
+char *getRuta(NodoPrincipal **p, char *id)
+{
+    NodoPrincipal *columna = *p;//tomamos la raiz de la lista
+    NodoSec *fila = columna->siguiente;//nos desplazamos hacia la derecha
+    while(columna!=NULL)//mientras hayan columnas que recorrer las recorremos
+    {
+        fila=columna->siguiente;//nos desplazamos a la primera posicion de la lista secundaria
+        while(fila!=NULL)//mientras nos podamos desplazar entre filas
+        {
+            if(strcmp(id,fila->idNumero)==0)//condicional si el nodo con el id
+            {
+                return fila->ruta;
+            }
+            else
+            {
+                fila=fila->siguiente;//cambiamos a la siguiente posicion en la lista secundaria
+            }
+        }
+        columna=columna->abajo;//cambiamos a la siguiente posicion en la lista principal
+    }
+    printf("No se encontro la particion\n");
+    return "NULL";
+}
+
 
 //-================================================================================================================
 
@@ -603,6 +636,28 @@ void Menu(char *linea)
             UNMOUNT(parametros[0],parametros[1]);
             return;
         }
+        else if(strcmp(trozo,"rep")==0)
+        {
+            //Imprimimos que esta en el menu de creacion de particiones
+            printf("\n***********************************\n");
+            printf("* Ingreso a Creacion de Reportes  *\n");
+            printf("***********************************\n");
+            char *parametros[4];//arreglo para guardar los parametros de la creacion de un archivo binario
+            int i =0;//contador de parametros
+            int salir_ciclo=False;//bandera para salir de ciclo
+            while(salir_ciclo!=True)
+            {
+                parametros[i]=trozo;//array de parametros
+                trozo = strtok( NULL, separador);//hacemos el proximo split
+                i++;
+                if(trozo==NULL)
+                    salir_ciclo=True;
+                else
+                    salir_ciclo=False;
+            }
+            REP(parametros[0],parametros[1],parametros[2],parametros[3]);
+            return;
+        }
     }
 }
 //================================================Creacion de Discos=============================================
@@ -644,8 +699,8 @@ void CrearArchivo(int size, char *unit,char *path)//metodo interno para creacion
     system(comando);//ejecutamos el comando
     int bt=size;
     int bytes = bt*8; //bytes a poner en el archivo
-    int kilobytes = bt*1024+512*8;//kilobytes en el archivo
-    int megabytes =bt*1024*1024+512*8;//megabytes en el archivo
+    int kilobytes = bt*1024;//kilobytes en el archivo
+    int megabytes =bt*1024*1024;//megabytes en el archivo
     char *bite='\0';
     FILE *archivo = fopen(path,"wb+");//creamos un archivo tipo solo para abrir
     if(archivo)//comprobamos si existe el archivo
@@ -864,6 +919,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                                     fclose(archivo);
                                     printf("-------------------Particion Primaria Creada con Exito--------------------\n");
                                     printf("--------------------------------------------------------------------------\n\n");
+
                                 }
                                 else
                                     printf("--------Espacio insuficiente para crear particion ---------\n\n");
@@ -876,12 +932,18 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
 
                     else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True)
                     {
-                        Particion extendida = getExtendida(getMBR(pathArchivo));//obtenemos el mbr luego la particion extendida
-                        crearLogica(extendida.part_start);
-                        printf("-------------------Particion Logica Creada con Exito--------------------\n");
-                        printf("--------------------------------------------------------------------------\n\n");
-
-
+                        printf("----------------------Atributos de Particion------------------------------\n");
+                        printf("Tamano de Particion: %d\n",sizeArchivo);
+                        printf("Unidad de Particion: %s\n",tipoArchivo);
+                        printf("Ruta fisica de Disco: %s\n",pathArchivo);
+                        printf("Tipo de Particion: %s\n",typeParticion);
+                        printf("Tipo de Ajuste: %s\n",fitParticion);
+                        printf("Nombre de Particion: %s\n",nameParticion);
+                        printf("--------------------------------------------------------------------------\n");
+                        MBR aux = getMBR(pathArchivo);
+                        Particion extendida = getExtendida(aux);//obtenemos el mbr luego la particion extendida
+                        creada=False;
+                        crearLogica(extendida.part_start,(extendida.part_start+extendida.part_size));
                     }
                     else
                     {
@@ -894,12 +956,18 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
             }
             else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True) //si la particion es logica
             {
+                printf("----------------------Atributos de Particion------------------------------\n");
+                printf("Tamano de Particion: %d\n",sizeArchivo);
+                printf("Unidad de Particion: %s\n",tipoArchivo);
+                printf("Ruta fisica de Disco: %s\n",pathArchivo);
+                printf("Tipo de Particion: %s\n",typeParticion);
+                printf("Tipo de Ajuste: %s\n",fitParticion);
+                printf("Nombre de Particion: %s\n",nameParticion);
+                printf("--------------------------------------------------------------------------\n");
                 MBR aux = getMBR(pathArchivo);
-                //printf("RUTA DEL MBR: %s",pathArchivo);
                 Particion extendida = getExtendida(aux);//obtenemos el mbr luego la particion extendida
-                crearLogica(extendida.part_start);
-                printf("-------------------Particion Logica Creada con Exito--------------------\n");
-                printf("--------------------------------------------------------------------------\n\n");
+                creada=False;
+                crearLogica(extendida.part_start,(extendida.part_start+extendida.part_size));
 
             }
             else
@@ -1111,7 +1179,8 @@ Particion getExtendida(MBR mbr) //metodo que traera la particion extendida;
 
 }
 
-void crearLogica(int inicio)
+
+void crearLogica(int inicio,int tamTotal)
 {
     int bt=sizeArchivo;
     int bytes = bt*8; //bytes a poner en el archivo
@@ -1149,25 +1218,42 @@ void crearLogica(int inicio)
                 ebr_nuevo.part_size=bytes;
             ebr_nuevo.part_start=inicio;
             ebr_nuevo.part_status=0;
-
-            FILE *temp =fopen(pathArchivo,"rb+");
-            fseek(temp,inicio,SEEK_SET);
-            fwrite(&ebr_nuevo,sizeof(EBR),1,temp);
-            fclose(temp);
+            if(tamTotal-(inicio+ebr_nuevo.part_size)>=0)
+            {
+                FILE *temp =fopen(pathArchivo,"rb+");
+                fseek(temp,inicio,SEEK_SET);
+                fwrite(&ebr_nuevo,sizeof(EBR),1,temp);
+                fclose(temp);
+                creada=True;
+                printf("--------------------Particion Logica Creada con Exito---------------------\n");
+                printf("--------------------------------------------------------------------------\n\n");
+                return;
+            }
+            else
+            {
+                creada=False;
+                printf("----------Se necesita mas espacio para poder insertar particion-----------\n");
+                printf("--------------------------------------------------------------------------\n\n");
+            }
         }
         else if(ebr.part_next==-1)
         {
-            ebr.part_next=(ebr.part_start+ebr.part_size);
+            crearLogica((ebr.part_start+ebr.part_size),tamTotal);
 
-            archivo =fopen(pathArchivo,"rb+");
-            fseek(archivo,inicio,SEEK_CUR);
-            fwrite(&ebr,sizeof(EBR),1,archivo);
-            fclose(archivo);
-            crearLogica(ebr.part_next);
+            if(creada!=False)
+            {
+                ebr.part_next=(ebr.part_start+ebr.part_size);
+
+                archivo =fopen(pathArchivo,"rb+");
+                fseek(archivo,inicio,SEEK_CUR);
+                fwrite(&ebr,sizeof(EBR),1,archivo);
+                fclose(archivo);
+
+            }
         }
         else
         {
-            crearLogica(ebr.part_next);
+            crearLogica(ebr.part_next,tamTotal);
         }
     }
 
@@ -1230,7 +1316,6 @@ int existeParticion(char *path,char *nombre)
                     return True;
                 if(mbrActual.particion[i].part_type=='e')
                 {
-                    printf("INICIO DE EXTENDIDA: %d\n",mbrActual.particion[i].part_start);
                     return existeLogica(mbrActual.particion[i].part_start);
                 }
             }
@@ -1413,6 +1498,7 @@ void split(char *valor,char *cmd)
             fdisk[2]=True;//encontro el parametro en fdisk
             executable[0]=True;
             mount[0]=True;
+            rep[1]=True;
         }
         else if(strcmp(temporal,"-type")==0)
         {
@@ -1438,6 +1524,7 @@ void split(char *valor,char *cmd)
             nameParticion=temporal;
             fdisk[6]=True;
             mount[1]=True;
+            rep[2]=True;
         }
         else if(strcmp(temporal,"-add")==0)
         {
@@ -1450,6 +1537,7 @@ void split(char *valor,char *cmd)
             temporal=strtok(NULL,separador);
             idParticion=temporal;
             unmount[0]=True;
+            rep[0]=True;
         }
         else
         {
@@ -1501,3 +1589,404 @@ void separarRuta(char *ruta)
     strcpy(carpetaArchivo,rutaDef); //copiamos el directorio de carpetas a la variable global
 
 }
+
+//=================================================================================================================================
+#pragma region REP
+void REP(char *cmd, char* id, char *path, char *name)
+{
+    rep[0]=False;
+    rep[1]=False;
+    rep[2]=False;
+
+    split(id,cmd);
+    split(path,cmd);
+    split(name,cmd);
+
+    separarRuta(pathArchivo);
+
+    if(rep[0]==True&&rep[1]==True&&rep[2]==True)
+    {
+        char *ruta = malloc(200);
+        ruta=getRuta(&primero,idParticion);
+        if(strcmp(ruta,"NULL")!=0)
+        {
+            printf("***********************************************************\n");
+            printf("*RUTA DE DISCO: %s\n",ruta);
+            printf("*TIPO DE REPORTE: %s\n",nameParticion);
+            printf("*RUTA DE DESTINO: %s\n",carpetaArchivo);
+            printf("*ARCHIVO ALOJADO EN: %s\n",pathArchivo);
+            printf("***********************************************************\n");
+
+            char comando[500];
+            strcpy(comando,"sudo mkdir -p ");//comando para crear arbol de carpetas
+            strcat(comando,carpetaArchivo);//concatenamos el comando con la ruta de carpetas
+            system(comando);//ejecutamos el comando
+            strcpy(comando,"sudo chmod 777 ");//comando para dar permisos de escritura lectura y ejecucion
+            strcat(comando,carpetaArchivo);//concatenamos el comando con la carpeta a dar permisos
+            system(comando);//ejecutamos el comando
+            MBR mbrAux =getMBR(ruta);//obtenemos el mbr del disco
+
+            if(strcmp(nameParticion,"mbr")==0)
+            {
+                graficarMBR(mbrAux,ruta);
+
+            }
+            else if(strcmp(nameParticion,"disk")==0)
+            {
+                graficarDISCO(mbrAux,ruta);
+            }
+
+            else
+            {
+                printf("No existe %s en los comandos permitidos \n",nameParticion);
+                return;
+            }
+            printf("Grafica creada en %s\n",carpetaArchivo);
+
+
+
+        }
+
+    }
+}
+void graficarMBR(MBR mbr,char *ruta)
+{
+    char line[200];
+    char append[50];
+    FILE *archivo=fopen(pathArchivo,"w+");
+    if(archivo)
+    {
+        //filas es tr columnas es td
+        fputs("<html>",archivo);
+        fputs("<body>",archivo);
+        fputs("<h1>MBR</h1>",archivo);
+        fputs("<table border=\"1\">",archivo);
+        fputs("<tr><td>Nombre</td><td>Valor</td></tr>",archivo);
+
+        fputs("<tr>",archivo);
+        fputs("<td>Fecha Creacion",archivo);
+        fputs("</td>",archivo);
+        fputs("<td>",archivo);
+        fputs(mbr.mrb_fecha_creacion,archivo);
+        fputs("</td>",archivo);
+        fputs("</tr>",archivo);
+
+        fputs("<tr>",archivo);
+        fputs("<td>Tamano",archivo);
+        fputs("</td>",archivo);
+        fputs("<td>",archivo);
+        sprintf(append,"%d",mbr.mbr_size); // put the int into a string
+        strcpy(line,append);
+        fputs(line,archivo);
+        fputs("</td>",archivo);
+        fputs("</tr>",archivo);
+
+        fputs("<tr>",archivo);
+        fputs("<td>Corrupto",archivo);
+        fputs("</td>",archivo);
+        fputs("<td>",archivo);
+        sprintf(append,"%d",mbr.mbr_corrupt); // put the int into a string
+        strcpy(line,append);
+        fputs(line,archivo);
+        fputs("</td>",archivo);
+        fputs("</tr>",archivo);
+        for(int i=0; i<4; i++)
+        {
+            if(mbr.part[i]==True)
+                insertarenHTMl(archivo,mbr.particion[i]);
+        }
+        fputs("</table>",archivo);
+
+        for(int i=0; i<4; i++)
+        {
+            if(mbr.part[i]==True)
+                if(mbr.particion[i].part_type=='e')
+                    imprimirLogica(archivo,mbr.particion[i].part_start,ruta);
+        }
+        fputs("</body>",archivo);
+        fputs("</html>",archivo);
+        fclose(archivo);
+    }
+    strcpy(line,"firefox ");
+    strcat(line,pathArchivo);
+    system(line);
+}
+
+void insertarenHTMl(FILE *archivo, Particion actual)
+{
+    char append[50];
+    char line[100];
+    fputs("<tr>",archivo);
+    fputs("<td>Nombre Particion",archivo);
+    fputs("</td>",archivo);
+    fputs("<td>",archivo);
+    fputs(actual.part_name,archivo);
+    fputs("</td>",archivo);
+    fputs("</tr>",archivo);
+
+    fputs("<tr>",archivo);
+    fputs("<td>Tipo",archivo);
+    fputs("</td>",archivo);
+    fputs("<td>",archivo);
+    if(actual.part_type=='p')
+        fputs("Primaria",archivo);
+    else
+        fputs("Extendida",archivo);
+    fputs("</td>",archivo);
+    fputs("</tr>",archivo);
+
+    fputs("<tr>",archivo);
+    fputs("<td>Ajuste",archivo);
+    fputs("</td>",archivo);
+    fputs("<td>",archivo);
+    if(actual.part_type=='b')
+        fputs("Mejor Ajuste",archivo);
+    else if(actual.part_type=='f')
+        fputs("Primer Ajuste",archivo);
+    else
+        fputs("Peor Ajuste",archivo);
+    fputs("</td>",archivo);
+    fputs("</tr>",archivo);
+
+    fputs("<tr>",archivo);
+    fputs("<td>Inicio Part",archivo);
+    fputs("</td>",archivo);
+    fputs("<td>",archivo);
+    sprintf(append,"%d",actual.part_start); // put the int into a string
+    strcpy(line,append);
+    fputs(line,archivo);
+    fputs("</td>",archivo);
+    fputs("</tr>",archivo);
+
+    fputs("<tr>",archivo);
+    fputs("<td>Tamano Part",archivo);
+    fputs("</td>",archivo);
+    fputs("<td>",archivo);
+    sprintf(append,"%d",actual.part_size); // put the int into a string
+    strcpy(line,append);
+    fputs(line,archivo);
+    fputs("</td>",archivo);
+    fputs("</tr>",archivo);
+
+}
+void imprimirLogica(FILE *temp, int inicio,char *ruta)
+{
+    EBR ebr;
+    FILE *archivo =fopen(ruta,"rb+");
+
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        printf("NOMBRE DE PARTICION: %s\n",ebr.part_name);
+        if(ebr.part_next==0)
+        {
+
+        }
+        else if(ebr.part_next==-1)
+        {
+            logicaenHTML(temp,ebr.part_start,ruta);
+            imprimirLogica(temp,(ebr.part_start+ebr.part_size),ruta);
+        }
+        else
+        {
+            logicaenHTML(temp,ebr.part_start,ruta);
+            imprimirLogica(temp,ebr.part_next,ruta);
+        }
+    }
+}
+
+
+
+void logicaenHTML(FILE *archivo,int inicioPart,char *ruta)
+{
+
+    char append[50];
+    char line[200];
+    FILE *temp =fopen(ruta,"rb+");
+    if(temp)
+    {
+        EBR ebr;
+        fseek(temp,inicioPart,SEEK_CUR);
+        fread(&ebr,sizeof(EBR),1,temp);
+        if(ebr.part_corrupt==4)
+        {
+            fputs("<h2>EBR</h2>",archivo);
+            fputs("<table border=\"1\">",archivo);
+            fputs("<tr><td>Nombre</td><td>Valor</td></tr>",archivo);
+            fputs("<tr>",archivo);
+            fputs("<td>Nombre",archivo);
+            fputs("</td>",archivo);
+            fputs("<td>",archivo);
+            fputs(ebr.part_name,archivo);
+            fputs("</td>",archivo);
+            fputs("</tr>",archivo);
+
+            fputs("<tr>",archivo);
+            fputs("<td>Fecha Creacion",archivo);
+            fputs("</td>",archivo);
+            fputs("<td>",archivo);
+            if(ebr.part_fit=='b')
+            {
+                fputs("BestFit",archivo);
+            }
+            else if(ebr.part_fit=='f')
+            {
+                fputs("FirstFit",archivo);
+            }
+            else
+            {
+                fputs("WorstFit",archivo);
+            }
+            fputs("</td>",archivo);
+            fputs("</tr>",archivo);
+
+            fputs("<tr>",archivo);
+            fputs("<td>Inicio",archivo);
+            fputs("</td>",archivo);
+            fputs("<td>",archivo);
+            sprintf(append,"%d",ebr.part_start); // put the int into a string
+            strcpy(line,append);
+            fputs(line,archivo);
+            fputs("</td>",archivo);
+            fputs("</tr>",archivo);
+
+            fputs("<tr>",archivo);
+            fputs("<td>Tamano",archivo);
+            fputs("</td>",archivo);
+            fputs("<td>",archivo);
+            sprintf(append,"%d",ebr.part_size); // put the int into a string
+            strcpy(line,append);
+            fputs(line,archivo);
+            fputs("</td>",archivo);
+            fputs("</tr>",archivo);
+
+            fputs("<tr>",archivo);
+            fputs("<td>Siguiente",archivo);
+            fputs("</td>",archivo);
+            fputs("<td>",archivo);
+            sprintf(append,"%d",ebr.part_next); // put the int into a string
+            strcpy(line,append);
+            fputs(line,archivo);
+            fputs("</td>",archivo);
+            fputs("</tr>",archivo);
+            fputs("</table>",archivo);
+        }
+        fclose(temp);
+    }
+}
+
+void graficarDISCO(MBR mbr,char *ruta)
+{
+    char line[1000];
+    char append[50]; //New variable
+
+    FILE *archivo=fopen("DISK.dot","w+");
+
+    if(archivo)
+    {
+        fputs("digraph ArchivoMBR{\n",archivo);//inicio de archivo
+        fputs("     subgraph cluster_DISCO{\n",archivo);
+        for(int i =3; i>=0; i--)
+        {
+            fputs("         subgraph cluster_",archivo);
+            fputc(letras[i],archivo);
+            fputs("{\n",archivo);
+            if(mbr.part[i]==True)
+            {
+                if(mbr.particion[i].part_type=='p')
+                {
+                    fputs("\n           ",archivo);
+                    fputs("\"",archivo);
+                    sprintf(append,"%d",contador_sub);
+                    fputs(append,archivo);
+                    fputs("\" ",archivo);
+                    sprintf( append,"[label =  \"Primaria \n %s\",fontname = \"Verdana\",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",mbr.particion[i].part_name);
+                    fputs(append,archivo);
+                }
+                else if(mbr.particion[i].part_type=='e')
+                {
+                    fputs("\n           ",archivo);
+                    fputs("\"",archivo);
+                    sprintf(append,"%d",contador_sub);
+                    fputs(append,archivo);
+                    fputs("\" ",archivo);
+                    sprintf( append,"[label = \"Extendida \n%s\",fontname = \"Verdana\",fillcolor=red,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",mbr.particion[i].part_name);
+                    fputs(append,archivo);
+                    fputs("                 subgraph cluster_LOGICAS{",archivo);
+                    EBR ebr;
+                    int salir =False;
+                    int inicio =mbr.particion[i].part_start;
+                    FILE *temp =fopen(ruta,"rb+");
+                    if(temp)
+                    {
+                        while(salir!=True)
+                        {
+                            EBR ebr;
+                            contador_sub++;
+                            fseek(temp,inicio,SEEK_CUR);
+                            fread(&ebr,sizeof(EBR),1,temp);
+                            rewind(temp);
+
+                            if(ebr.part_next==-1)
+                            {
+                                fputs("\n           ",archivo);
+                                fputs("\"",archivo);
+                                sprintf(append,"%d",contador_sub);
+                                fputs(append,archivo);
+                                fputs("\" ",archivo);
+                                sprintf(append,"[label = \"Logica \n%s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",ebr.part_name);
+                                fputs(append,archivo);
+                                inicio =ebr.part_start+ebr.part_size;
+                            }
+                            else if(ebr.part_next==0)
+                            {
+                                salir=True;
+                            }
+                            else
+                            {
+                                fputs("\n           ",archivo);
+                                fputs("\"",archivo);
+                                sprintf(append,"%d",contador_sub);
+                                fputs(append,archivo);
+                                fputs("\" ",archivo);
+                                sprintf(append,"[label = \"Logica \n %s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",ebr.part_name);
+                                fputs(append,archivo);
+                                inicio =ebr.part_next;
+                            }
+
+
+                        }
+                        fclose(temp);
+                    }
+                    fputs("\n               }\n",archivo);
+                }
+
+            }
+            else
+            {
+                fputs("\n           ",archivo);
+                fputs("\"",archivo);
+                sprintf(append,"%d",contador_sub);
+                fputs(append,archivo);
+                fputs("\" ",archivo);
+                fputs( "[label = \"Libre\",fontname = \"Verdana\",fillcolor=gray,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",archivo);
+            }
+            fputs("\n        }\n",archivo);
+            contador_sub++;
+        }
+        fputs("         subgraph cluster_MBR{",archivo);
+        fputs("\n           ",archivo);
+        fputs( "\"MBR\" [label =  \"MBR\",fontname = \"Verdana\",fillcolor=lightblue,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 2];\n",archivo);
+        fputs("\n       }",archivo);
+        fputs("\n   }",archivo);
+        fputs("\n}\n",archivo);
+
+    }
+    fclose(archivo);
+    strcpy(line,"dot -Tpng DISK.dot -o ");
+    strcat(line,pathArchivo);
+    system(line);
+}
+#pragma endregion REP

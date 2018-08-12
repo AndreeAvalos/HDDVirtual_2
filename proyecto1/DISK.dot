@@ -1,0 +1,52 @@
+digraph ArchivoMBR{
+     subgraph cluster_DISCO{
+         subgraph cluster_e{
+
+           "1" [label =  "Primaria 
+ part5",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+
+        }
+         subgraph cluster_c{
+
+           "2" [label = "Extendida 
+part3",fontname = "Verdana",fillcolor=red,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+                 subgraph cluster_LOGICAS{
+           "3" [label = "Logica 
+ part6",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+           "4" [label = "Logica 
+ part7",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+           "5" [label = "Logica 
+ part8",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+           "6" [label = "Logica 
+ part9",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+           "7" [label = "Logica 
+ part10",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+           "8" [label = "Logica 
+part11",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+
+               }
+
+        }
+         subgraph cluster_b{
+
+           "10" [label =  "Primaria 
+ part2",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+
+        }
+         subgraph cluster_a{
+
+           "11" [label =  "Primaria 
+ part1",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+
+        }
+         subgraph cluster_MBR{
+           "MBR" [label =  "MBR",fontname = "Verdana",fillcolor=lightblue,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 2];
+
+       }
+   }
+}
