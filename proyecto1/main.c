@@ -698,21 +698,13 @@ void CrearArchivo(int size, char *unit,char *path)//metodo interno para creacion
     strcat(comando,carpetaArchivo);//concatenamos el comando con la carpeta a dar permisos
     system(comando);//ejecutamos el comando
     int bt=size;
-    int bytes = bt*8; //bytes a poner en el archivo
     int kilobytes = bt*1024;//kilobytes en el archivo
     int megabytes =bt*1024*1024;//megabytes en el archivo
     char *bite='\0';
     FILE *archivo = fopen(path,"wb+");//creamos un archivo tipo solo para abrir
     if(archivo)//comprobamos si existe el archivo
     {
-        if(strcmp(unitArchivo,"b")==0)//comparamos si es bytes
-        {
-            for(int i=0; i<bytes; i++) //ciclo que llena el archivo de 0 byte por byte
-            {
-                fwrite(&bite,1,1,archivo);
-            }
-        }
-        else if(strcmp(unitArchivo,"k")==0)//comparacion si es kilobytes
+        if(strcmp(unitArchivo,"k")==0)//comparacion si es kilobytes
         {
             for(int i=0; i<kilobytes; i++)
             {
@@ -832,7 +824,13 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
         }
         else
             printf("        MBR encontrado, se procedera a crear la particion\n\n");
-
+        int tamanoParticion=sizeArchivo;
+        if(strcmp(unitArchivo,"k")==0)
+            tamanoParticion=tamanoParticion*1024;
+        else if(strcmp(unitArchivo,"m")==0)
+            tamanoParticion=tamanoParticion*1024*1024;
+        else
+            tamanoParticion=tamanoParticion*8;
 
         int salir_busqueda=False;
         int espacio_particion =False;
@@ -952,7 +950,8 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
 
                 }
                 else
-                    printf("No se puede crear particion por que es 0 o numero negativo\n");
+                    printf("No se puede crear particion por que es 0, numero negativo o execede el valor del disto\n");
+                return;
             }
             else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True) //si la particion es logica
             {
@@ -1032,14 +1031,14 @@ int PrimerAjuste(MBR mbrActual)
         {
             if(primero->siguiente!=NULL) //si el siguiente no es nulo lo comparamos con el siguiente indice
             {
-                final_=mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size;
+                final_=mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size+sizeParticion;
                 restante = mbrActual.particion[primero->siguiente->indice].part_start-final_;
-                if(restante>0)
+                if(restante>=0)
                     return final_;
             }
             else//de lo contrario lo comparamos con el final del archivo
             {
-                restante=fin - (mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size);
+                restante=fin - (mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size+sizeParticion);
                 if(restante>=0)
                     return mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size;
             }
@@ -1057,7 +1056,7 @@ Particion crearParticion(int inicio)
     int bt=sizeArchivo;
     int bytes = bt*8; //bytes a poner en el archivo
     int kilobytes = bt*1024;//kilobytes en el archivo
-    int megabytes =kilobytes*1024;//megabytes en el archivo
+    int megabytes =bt*1024;//megabytes en el archivo
 
     int tamano_restante=tamano_disco-inicio;
     Particion part;
@@ -1707,9 +1706,9 @@ void graficarMBR(MBR mbr,char *ruta)
         fputs("</html>",archivo);
         fclose(archivo);
     }
-    strcpy(line,"firefox ");
+    /*strcpy(line,"firefox ");
     strcat(line,pathArchivo);
-    system(line);
+    system(line);*/
 }
 
 void insertarenHTMl(FILE *archivo, Particion actual)
@@ -1779,7 +1778,6 @@ void imprimirLogica(FILE *temp, int inicio,char *ruta)
         fseek(archivo,inicio,SEEK_SET);
         fread(&ebr,sizeof(EBR),1,archivo);
         fclose(archivo);
-        printf("NOMBRE DE PARTICION: %s\n",ebr.part_name);
         if(ebr.part_next==0)
         {
 

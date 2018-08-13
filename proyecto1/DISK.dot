@@ -2,8 +2,7 @@ digraph ArchivoMBR{
      subgraph cluster_DISCO{
          subgraph cluster_e{
 
-           "1" [label =  "Primaria 
- part5",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+           "1" [label = "Libre",fontname = "Verdana",fillcolor=gray,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
 
         }
          subgraph cluster_c{
@@ -41,7 +40,7 @@ part11",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = r
          subgraph cluster_a{
 
            "11" [label =  "Primaria 
- part1",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+ part_1",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
 
         }
          subgraph cluster_MBR{
