@@ -26,6 +26,8 @@ int contador_sub=1;//contador de subgrafos
 int tamanoLista=0;//contador de tamano de lista principal
 char letras[25]= {'a','b','c','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z'};//numero maximo de particiones activas
 int tamano_disco=0;
+int comando_valido=True;
+int desde_consola=True;
 #pragma endregion Globales
 
 #pragma region Validaciones
@@ -84,6 +86,7 @@ typedef struct nodoSecundario//estructura para lista secundaria
     int numeroParticion;//guardara el numero asignado a la particion
     char *id;//guardara "vb"+letra
     char *idNumero;//guardara "vb"+letra+numero
+    char *nombreParticion;
     char *ruta;
     struct nodoSecundario *siguiente, *anterior;//enlaces para lista secundaria
 } NodoSec;
@@ -99,24 +102,24 @@ typedef struct nodoPrincipal//estructura para lista principal
 } NodoPrincipal;
 
 NodoPrincipal*insertarPrincipal(NodoPrincipal**p, char* r);
-void insertarSecundario(NodoSec **s,char* d,char *part,char *ruta);
+void insertarSecundario(NodoSec **s,char* d,char *part,char *ruta,char *nombre);
 NodoPrincipal*crearNodoPrincipal(char* r);
-NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *ruta);
+NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *ruta,char *nombre);
 NodoPrincipal*buscarPrincipal(NodoPrincipal*p,char* r);
 void imprimir(NodoPrincipal*p);
 NodoPrincipal *primero;
 char *getRuta(NodoPrincipal **p, char *id);
 
-void insertar(NodoPrincipal ** p, char* row, char* dato)//metodo para insertar un nuevo nodo
+void insertar(NodoPrincipal ** p, char* row, char* dato,char *part)//metodo para insertar un nuevo nodo
 {
     NodoPrincipal*principal = insertarPrincipal(p,row);//crea un nodo, lo inserta y lo devuelve
     principal->tamano++;//incrementamos el tamano de la lista secundaria
-    insertarSecundario(&(principal->siguiente),dato,principal->id,principal->nameDisco);//insertamos el nodo secundario dentro del principal devuelto
+    insertarSecundario(&(principal->siguiente),dato,principal->id,principal->nameDisco,part);//insertamos el nodo secundario dentro del principal devuelto
 }
 void eliminar(NodoPrincipal **p,char *id)//eliminar un nodo por nombre de montura
 {
     NodoPrincipal *columna = *p;//tomamos la raiz de la lista
-    NodoSec *fila = columna->siguiente;//nos desplazamos hacia la derecha
+    NodoSec *fila =malloc(sizeof(NodoSec));//nos desplazamos hacia la derecha
     while(columna!=NULL)//mientras hayan columnas que recorrer las recorremos
     {
         fila=columna->siguiente;//nos desplazamos a la primera posicion de la lista secundaria
@@ -151,6 +154,29 @@ void eliminar(NodoPrincipal **p,char *id)//eliminar un nodo por nombre de montur
     printf("No se encontro la particion\n");
 }
 
+int getParticion(NodoPrincipal *p,char *part)//eliminar un nodo por nombre de montura
+{
+    NodoPrincipal *columna = p;//tomamos la raiz de la lista
+    NodoSec *fila = malloc(sizeof(NodoSec));//nos desplazamos hacia la derecha
+    while(columna!=NULL)//mientras hayan columnas que recorrer las recorremos
+    {
+        fila=columna->siguiente;//nos desplazamos a la primera posicion de la lista secundaria
+        while(fila!=NULL)//mientras nos podamos desplazar entre filas
+        {
+            if(strcmp(part,fila->nombreParticion)==0)//condicional si el nodo con el id
+            {
+                return True;
+            }
+            else
+            {
+                fila=fila->siguiente;//cambiamos a la siguiente posicion en la lista secundaria
+            }
+        }
+        columna=columna->abajo;//cambiamos a la siguiente posicion en la lista principal
+    }
+    return False;
+}
+
 NodoPrincipal*crearNodoPrincipal(char* r)
 {
     NodoPrincipal* nuevo = (NodoPrincipal*)malloc(sizeof(NodoPrincipal));
@@ -166,7 +192,7 @@ NodoPrincipal*crearNodoPrincipal(char* r)
     nuevo->tamano=0;
     return nuevo;
 }
-NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *rutaa)
+NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *rutaa,char *nombre)
 {
     NodoSec* nuevo = (NodoSec*)malloc(sizeof(NodoSec));
     nuevo->id = d;
@@ -174,6 +200,9 @@ NodoSec*crearNodoSecundario(NodoSec **s, char* d,char *part,char *rutaa)
     char *nombrePart = malloc(30);
     strcpy(nombrePart,part);
     char *nombreRuta=malloc(200);
+    char *nombreParticion=malloc(30);
+    strcpy(nombreParticion,nombre);
+    nuevo->nombreParticion=nombreParticion;
     strcpy(nombreRuta,rutaa);
     nuevo->ruta=nombreRuta;
     char c = '0'+nuevo->numeroParticion;
@@ -220,9 +249,9 @@ NodoPrincipal *insertarPrincipal(NodoPrincipal**p,char* r)
     }
 
 }
-void insertarSecundario(NodoSec **s, char* d,char *part,char *ruta)
+void insertarSecundario(NodoSec **s, char* d,char *part,char *ruta,char *nombre)
 {
-    NodoSec * nuevo= crearNodoSecundario((*s),d,part,ruta);
+    NodoSec * nuevo= crearNodoSecundario((*s),d,part,ruta,nombre);
     if(*s!=NULL)
     {
         nuevo->siguiente=*s;
@@ -410,6 +439,7 @@ void consola()
 {
     while(SalirPrograma!=True)
     {
+        desde_consola=False;
         printf("                       --Ingrese el Comando a Realizar--\n");
         scanf("%[^\n]", linea);
         while(getchar()!='\n');
@@ -553,6 +583,11 @@ void Menu(char *linea)
             printf("* Ingreso a la Modificacion de Discos *\n");
             printf("***************************************\n");
             char *parametros[8];//arreglo para guardar los parametros de la creacion de un archivo binario
+            for(int j=0; j<8; j++)
+            {
+                parametros[j]=malloc(100);
+                strcpy(parametros[j],"vacio=NULL");
+            }
             int i =0;//contador de parametros
             int salir_ciclo=False;//bandera para salir de ciclo
             while(salir_ciclo!=True)
@@ -669,19 +704,31 @@ void MKDISK(char *cmd,char *size, char *unit, char *path)//Metodo para armar el 
     mkdisk[0]=False;
     mkdisk[1]=False;
     mkdisk[2]=False;
-
+    comando_valido=True;
     split(size,cmd);//separamos la parte de tamano y obtenemos su valor
     split(unit,cmd);//separamos la parte de unidad y obtenemos su valor
     split(path,cmd);//Separamos la parte de ruta y obtenemos su valor
     int valido = validar(cmd);
-    if(valido==True)
+    if(valido==True&&comando_valido==True)
     {
         printf("Tamano de la unidad a crear: %d\n",sizeArchivo);
         printf("Tipo de unidad: %s\n",tipoArchivo);
         printf("Ruta de archivo a crear: %s\n",pathArchivo);
         separarRuta(pathArchivo);//separamos la ruta para poder crear el arbol de carpetas donde se creeara el archivo
         if(sizeArchivo>0)
+        {
             CrearArchivo(sizeArchivo,unitArchivo,pathArchivo);//creamos el archivo binario que sera nuestro disco duro virtual
+            int existe_MBR = existeMBR(pathArchivo);
+            if(existe_MBR==0)
+            {
+                printf("        No existe MBR en el disco se creara.\n");
+                crearMBR(pathArchivo);
+                printf("        MBR se creo con exito, se procedera a crear particion\n\n");
+            }
+            else
+                printf("        MBR encontrado, se procedera a crear la particion\n\n");
+
+        }
         else
             printf("No se puede crear archivo por que es 0 o numero negativo\n");
 
@@ -743,9 +790,9 @@ void CrearArchivo(int size, char *unit,char *path)//metodo interno para creacion
 
 void RMDISK(char *cmd,char *path)
 {
+    int opcion=True;
     rmdisk[0]=False;
     split(path,cmd);//separamos el ruta para obtener el valor
-
     if(rmdisk[0]==True)
     {
         printf("Ruta donde se va a eliminar: %s\n",pathArchivo);
@@ -754,19 +801,39 @@ void RMDISK(char *cmd,char *path)
         if(archivo)
         {
             fclose(archivo);
-
-            strcpy(comando,"sudo rm ");
-            strcat(comando,pathArchivo);
-            system(comando);
-            archivo=fopen(pathArchivo,"rb");
-            if(archivo)
+            if(desde_consola==False)
             {
-                printf("No se pudo eliminar el Disco\n");
+                opcion=True;
             }
             else
             {
-                printf("Disco Eliminado con exito\n");
+                printf("Desea eliminar el disco 1.Si/2.No\n");
+                int num=0;
+                scanf("%d",&num);
+                if(num==1)
+                    opcion=True;
+                else
+                    opcion=False;
             }
+
+            if(opcion==True)
+            {
+                strcpy(comando,"sudo rm ");
+                strcat(comando,pathArchivo);
+                system(comando);
+                archivo=fopen(pathArchivo,"rb");
+                if(archivo)
+                {
+                    printf("No se pudo eliminar el Disco\n");
+                    fclose(archivo);
+                }
+                else
+                {
+                    printf("Disco Eliminado con exito\n");
+                }
+            }
+            else
+                printf("*******Se cancelo la eliminacion de Disco********\n");
         }
 
         else
@@ -800,7 +867,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
     fdisk[5]=False;
     fdisk[6]=False;
     fdisk[7]=False;
-
+    comando_valido=True;
     sizeArchivo=0;
     split(size,cmd);//separamos la parte de tamano y obtenemos su valor
     split(unit,cmd);//separamos la parte de unidad y obtenemos su valor
@@ -808,22 +875,13 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
     split(type,cmd);
     split(fit,cmd);
     split(del,cmd);
-    split(name,cmd);
+    //split(name,cmd);
     //split(add,cmd);
 
     int valido=validar(cmd);
 
-    if(valido==True)
+    if(valido==True&&comando_valido==True)
     {
-        int existe_MBR = existeMBR(pathArchivo);
-        if(existe_MBR==0)
-        {
-            printf("        No existe MBR en el disco se creara.\n");
-            crearMBR(pathArchivo);
-            printf("        MBR se creo con exito, se procedera a crear particion\n\n");
-        }
-        else
-            printf("        MBR encontrado, se procedera a crear la particion\n\n");
         int tamanoParticion=sizeArchivo;
         if(strcmp(unitArchivo,"k")==0)
             tamanoParticion=tamanoParticion*1024;
@@ -979,10 +1037,193 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
         }
         else if(fdisk[5]==True)//si encuentra el parametro delete
         {
+            MBR aux = getMBR(pathArchivo);
+            int salir = False;
+            int i=0;
+            for(int i=0; i<4; i++)
+            {
+                if(aux.part[i]==True)
+                {
+                    if(strcmp(aux.particion[i].part_name,nameParticion)==0)
+                    {
+                        if(aux.particion[i].part_type=='e')
+                        {
+                            EBR ebrAux;
+                            FILE *archivo = fopen(pathArchivo,"rb");
+                            fseek(archivo,0,SEEK_CUR);
+                            fread(&ebrAux,sizeof(EBR),1,archivo);
+                            if(ebrAux.part_next==-1||ebrAux.part_next==0)
+                            {
+                                if(ebrAux.part_size!=0)
+                                {
+                                    if(strcmp(deleteParticion,"full")==0)
+                                    {
+                                        escribirParticion(mbrAuxiliar.particion[i].part_start,mbrAuxiliar.particion[i].part_size,'\0',pathArchivo);
+                                    }
+                                    Particion nuevo;
+                                    mbrAuxiliar.extend=False;
+                                    mbrAuxiliar.part[i]=False;
+                                    mbrAuxiliar.particion[i]=nuevo;
+                                    ActualizarMBR(mbrAuxiliar,pathArchivo);
+                                    printf("***Particion eliminada con exito*****\n");
+                                    return;
 
+                                }
+                                else
+                                    printf("---No se puede eliminar particion extendida por que tiene particiones logicas---\n");
+                                return;
+
+                            }
+                            else
+                                printf("---No se puede eliminar particion extendida por que tiene particiones logicas---\n");
+                            return;
+
+                        }
+                        else
+                        {
+
+                            if(strcmp(deleteParticion,"full")==0)
+                            {
+                                escribirParticion(mbrAuxiliar.particion[i].part_start,mbrAuxiliar.particion[i].part_size,'\0',pathArchivo);
+                            }
+                            Particion nuevo;
+                            mbrAuxiliar.part[i]=False;
+                            mbrAuxiliar.particion[i]=nuevo;
+                            ActualizarMBR(mbrAuxiliar,pathArchivo);
+                            printf("***Particion eliminada con exito*****\n");
+                            return;
+
+                        }
+                    }
+                }
+            }
+
+            //si llego aqui es por que es logic
+
+            for(int i=0; i<4; i++)
+            {
+                if(mbrAuxiliar.part[i]==True)
+                {
+                    if(mbrAuxiliar.particion[i].part_type=='e')
+                    {
+
+                        EBR ebr;
+                        FILE *archivo =fopen(pathArchivo,"rb+");
+                        if(archivo)
+                        {
+                            fseek(archivo,mbrAuxiliar.particion[i].part_start,SEEK_SET);
+                            fread(&ebr,sizeof(EBR),1,archivo);
+                            if(ebr.part_next==0)
+                            {
+
+                            }
+                            else
+                            {
+                                if(strcmp(ebr.part_name,nameParticion)==0)
+                                {
+                                    int inicio =ebr.part_start;
+                                    int tamano =ebr.part_size;
+
+                                    ebr.part_fit='\0';
+                                    ebr.part_size=0;
+                                    strcpy(ebr.part_name,"LIBRE");
+                                    ebr.part_status=False;
+                                    rewind(archivo);
+                                    fseek(archivo,inicio,SEEK_SET);
+                                    fwrite(&ebr,sizeof(EBR),1,archivo);
+                                    fclose(archivo);
+
+                                    if(strcmp(deleteParticion,"full")==0)
+                                    {
+                                        escribirParticion(inicio+sizeof(EBR),tamano,'\0',pathArchivo);
+                                    }
+                                    return;
+
+                                }
+                                else
+                                {
+
+                                    int existe = eliminarLogica(mbrAuxiliar.particion[i].part_start);
+                                    if(existe==True)
+                                    {
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            printf("---No existe particion----\n");
         }
     }
 }
+
+int eliminarLogica(int inicio)
+{
+
+    EBR ebr;
+    FILE *archivo =fopen(pathArchivo,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        if(ebr.part_next==0)
+            return False;
+        else if(ebr.part_next==-1)
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+                return True;
+            else
+                return False;
+        }
+        else
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+                return True;
+            else
+                return existeLogica(ebr.part_next);
+        }
+    }
+    else
+    {
+        return False;
+    }
+}
+
+void ActualizarMBR(MBR mbrActual,char *ruta)
+{
+    FILE *archivo=fopen(ruta,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,0,SEEK_CUR);
+        fwrite(&mbrActual,sizeof(MBR),1,archivo);
+        printf("Se actualizo el MBR\n");
+        fclose(archivo);
+    }
+    else
+    {
+        printf("No se pudo actualizar MBR\n");
+    }
+}
+
+void escribirParticion(int inicio, int sizet,char *carac, char *ruta)
+{
+    FILE *archivo=fopen(ruta,"rb+");
+    char *caracter=carac;
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_CUR);
+        for(int i=0; i<sizet; i++)
+        {
+            fwrite(&caracter,1,1,archivo);
+        }
+        fclose(archivo);
+    }
+
+}
+
 int PrimerAjuste(MBR mbrActual)
 {
     int sizeParticion=0;
@@ -1023,12 +1264,36 @@ int PrimerAjuste(MBR mbrActual)
         indice++;
     }
 
+
     if(primero==NULL)//si no encontro ninguna particion
-        return 512;//retornamos para que lo inserte al principio
+    {
+        int inicio =512;
+        int tamano = sizeParticion;
+        int restante=mbrActual.mbr_size-(inicio+tamano);
+        if(restante>=0)
+            return 512;
+    }
     else
     {
+        if(primero->numero!=512)
+        {
+            if(primero->siguiente!=NULL)
+            {
+                int inicio =512;
+                int tamano=sizeParticion;
+                int disponible=mbrActual.particion[primero->indice].part_start-inicio;
+                int restante=disponible-tamano;
+                if(restante>=0)
+                {
+                    return 512;
+                }
+            }
+
+        }
+
         while(primero!=NULL) //recorremos la lista para saber donde hay espacio disponible
         {
+
             if(primero->siguiente!=NULL) //si el siguiente no es nulo lo comparamos con el siguiente indice
             {
                 final_=mbrActual.particion[primero->indice].part_start+mbrActual.particion[primero->indice].part_size+sizeParticion;
@@ -1216,7 +1481,7 @@ void crearLogica(int inicio,int tamTotal)
             else if(strcmp(unitArchivo,"b")==0)
                 ebr_nuevo.part_size=bytes;
             ebr_nuevo.part_start=inicio;
-            ebr_nuevo.part_status=0;
+            ebr_nuevo.part_status=1;
             if(tamTotal-(inicio+ebr_nuevo.part_size)>=0)
             {
                 FILE *temp =fopen(pathArchivo,"rb+");
@@ -1237,6 +1502,47 @@ void crearLogica(int inicio,int tamTotal)
         }
         else if(ebr.part_next==-1)
         {
+            if(ebr.part_status==0)
+            {
+                EBR ebr_nuevo;
+                ebr_nuevo.part_corrupt=4;
+                if(strcmp(fitParticion,"bf")==0)
+                    ebr_nuevo.part_fit='b';
+                else if(strcmp(fitParticion,"wf")==0)
+                    ebr_nuevo.part_fit='w';
+                else if(strcmp(fitParticion,"ff")==0)
+                    ebr_nuevo.part_fit='f';
+
+                ebr_nuevo.part_next=ebr.part_next;
+                strcpy(ebr_nuevo.part_name,nameParticion);
+
+                if(strcmp(unitArchivo,"m")==0)
+                    ebr_nuevo.part_size=megabytes;
+                else if(strcmp(unitArchivo,"k")==0)
+                    ebr_nuevo.part_size=kilobytes;
+                else if(strcmp(unitArchivo,"b")==0)
+                    ebr_nuevo.part_size=bytes;
+                ebr_nuevo.part_start=inicio;
+                ebr_nuevo.part_status=1;
+                if(tamTotal-(inicio+ebr_nuevo.part_size)>=0)
+                {
+                    FILE *temp =fopen(pathArchivo,"rb+");
+                    fseek(temp,inicio,SEEK_SET);
+                    fwrite(&ebr_nuevo,sizeof(EBR),1,temp);
+                    fclose(temp);
+                    creada=True;
+                    printf("--------------------Particion Logica Creada con Exito---------------------\n");
+                    printf("--------------------------------------------------------------------------\n\n");
+                    return;
+                }
+                else
+                {
+                    creada=False;
+                    printf("----------Se necesita mas espacio para poder insertar particion-----------\n");
+                    printf("--------------------------------------------------------------------------\n\n");
+                }
+            }
+
             crearLogica((ebr.part_start+ebr.part_size),tamTotal);
 
             if(creada!=False)
@@ -1247,11 +1553,51 @@ void crearLogica(int inicio,int tamTotal)
                 fseek(archivo,inicio,SEEK_CUR);
                 fwrite(&ebr,sizeof(EBR),1,archivo);
                 fclose(archivo);
-
             }
         }
         else
         {
+            if(ebr.part_status==0)
+            {
+                EBR ebr_nuevo;
+                ebr_nuevo.part_corrupt=4;
+                if(strcmp(fitParticion,"bf")==0)
+                    ebr_nuevo.part_fit='b';
+                else if(strcmp(fitParticion,"wf")==0)
+                    ebr_nuevo.part_fit='w';
+                else if(strcmp(fitParticion,"ff")==0)
+                    ebr_nuevo.part_fit='f';
+
+                ebr_nuevo.part_next=ebr.part_next;
+                strcpy(ebr_nuevo.part_name,nameParticion);
+
+                if(strcmp(unitArchivo,"m")==0)
+                    ebr_nuevo.part_size=megabytes;
+                else if(strcmp(unitArchivo,"k")==0)
+                    ebr_nuevo.part_size=kilobytes;
+                else if(strcmp(unitArchivo,"b")==0)
+                    ebr_nuevo.part_size=bytes;
+                ebr_nuevo.part_start=inicio;
+                ebr_nuevo.part_status=1;
+                if(tamTotal-(inicio+ebr_nuevo.part_size)>=0)
+                {
+                    FILE *temp =fopen(pathArchivo,"rb+");
+                    fseek(temp,inicio,SEEK_SET);
+                    fwrite(&ebr_nuevo,sizeof(EBR),1,temp);
+                    fclose(temp);
+                    creada=True;
+                    printf("--------------------Particion Logica Creada con Exito---------------------\n");
+                    printf("--------------------------------------------------------------------------\n\n");
+                    return;
+                }
+                else
+                {
+                    creada=False;
+                    printf("----------Se necesita mas espacio para poder insertar particion-----------\n");
+                    printf("--------------------------------------------------------------------------\n\n");
+                }
+            }
+
             crearLogica(ebr.part_next,tamTotal);
         }
     }
@@ -1266,12 +1612,12 @@ void MOUNT(char *cmd, char *path, char *name)
     mount[0]=False;
     mount[1]=False;
     contadorprueba++;
-
+    comando_valido=True;
     split(path,cmd);
     split(name,cmd);
 
 
-    if(mount[0]==True&&mount[1]==True)
+    if(mount[0]==True&&mount[1]==True&&comando_valido==True)
     {
 
         if(existeParticion(pathArchivo,nameParticion)==True)
@@ -1281,10 +1627,18 @@ void MOUNT(char *cmd, char *path, char *name)
 
             strcpy(aux,pathArchivo);
             strcpy(aux2,nameParticion);
+            if(getParticion(primero,nameParticion)==False)
+            {
+                insertar(&primero,aux,aux2,nameParticion);
+                printf("------------------Vista de Particiones Montadas---------------\n");
+                imprimir(primero);
 
-            insertar(&primero,aux,aux2);
-            printf("------------------Vista de Particiones Montadas---------------\n");
-            imprimir(primero);
+            }
+            else
+            {
+                printf("---Particion ya Montada----\n");
+
+            }
         }
         else
         {
@@ -1312,7 +1666,10 @@ int existeParticion(char *path,char *nombre)
             if(mbrActual.part[i]==True)
             {
                 if(strcmp(mbrActual.particion[i].part_name,nombre)==0)
+                {
                     return True;
+                }
+
                 if(mbrActual.particion[i].part_type=='e')
                 {
                     return existeLogica(mbrActual.particion[i].part_start);
@@ -1354,9 +1711,6 @@ int existeLogica(int inicio)
     {
         return False;
     }
-
-
-
 }
 
 #pragma endregion MOUNT
@@ -1367,7 +1721,7 @@ void UNMOUNT(char *cmd, char *id)
     unmount[0]=False;
 
     split(id,cmd);
-    if(unmount[0])
+    if(unmount[0]&&primero!=NULL)
     {
         eliminar(&primero,idParticion);
         printf("------------------Vista de Particiones Montadas---------------\n");
@@ -1375,7 +1729,7 @@ void UNMOUNT(char *cmd, char *id)
     }
     else
     {
-        printf("------------No se puede montar la particion-----------\n");
+        printf("------------No se puede desmontar la particion-----------\n");
     }
 }
 
@@ -1399,9 +1753,10 @@ void EXECUTABLE(char *cmd, char*ruta)
 
         while (fgets(linea, 500, entrada) != NULL)
         {
-            printf("%s\n",linea);
+            desde_consola=False;
             stchcat(linea,'\n');
             LowerCase(linea);
+            printf("%s\n",linea);
             Menu(linea);
         }
 
@@ -1456,6 +1811,8 @@ int validar(char *cmd)
                 return True;
             }
         }
+        else if(fdisk[5]==True && fdisk[2]==True&&fdisk[6]==True)
+            return True;
     }
     return False;
 
@@ -1538,9 +1895,14 @@ void split(char *valor,char *cmd)
             unmount[0]=True;
             rep[0]=True;
         }
+        else if(strcmp(temporal,"vacio")==0)
+        {
+
+        }
         else
         {
             printf("ERROR---No existe parametro %s en linea de comando %s\n",temporal,cmd);
+            comando_valido=False;
             return;
         }
 
@@ -1603,7 +1965,7 @@ void REP(char *cmd, char* id, char *path, char *name)
 
     separarRuta(pathArchivo);
 
-    if(rep[0]==True&&rep[1]==True&&rep[2]==True)
+    if(rep[0]==True&&rep[1]==True&&rep[2]==True&&primero!=NULL)
     {
         char *ruta = malloc(200);
         ruta=getRuta(&primero,idParticion);
@@ -1645,6 +2007,12 @@ void REP(char *cmd, char* id, char *path, char *name)
 
 
         }
+
+    }
+    else
+    {
+
+        printf("-No se pudo crear el reporte-\n");
 
     }
 }
@@ -1787,7 +2155,7 @@ void imprimirLogica(FILE *temp, int inicio,char *ruta)
             logicaenHTML(temp,ebr.part_start,ruta);
             imprimirLogica(temp,(ebr.part_start+ebr.part_size),ruta);
         }
-        else
+        else if(ebr.part_next>0)
         {
             logicaenHTML(temp,ebr.part_start,ruta);
             imprimirLogica(temp,ebr.part_next,ruta);
@@ -1881,7 +2249,7 @@ void graficarDISCO(MBR mbr,char *ruta)
     char append[50]; //New variable
 
     FILE *archivo=fopen("DISK.dot","w+");
-
+    float total=0;
     if(archivo)
     {
         fputs("digraph ArchivoMBR{\n",archivo);//inicio de archivo
@@ -1900,7 +2268,10 @@ void graficarDISCO(MBR mbr,char *ruta)
                     sprintf(append,"%d",contador_sub);
                     fputs(append,archivo);
                     fputs("\" ",archivo);
-                    sprintf( append,"[label =  \"Primaria \n %s\",fontname = \"Verdana\",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",mbr.particion[i].part_name);
+                    float espacio= 0;
+                    total+=(float)mbr.particion[i].part_size;
+                    espacio= ((double) mbr.particion[i].part_size / mbr.mbr_size)*100;
+                    sprintf( append,"[label =  \"Primaria %f% \n %s\",fontname = \"Verdana\",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",(double) espacio,mbr.particion[i].part_name);
                     fputs(append,archivo);
                 }
                 else if(mbr.particion[i].part_type=='e')
@@ -1910,6 +2281,9 @@ void graficarDISCO(MBR mbr,char *ruta)
                     sprintf(append,"%d",contador_sub);
                     fputs(append,archivo);
                     fputs("\" ",archivo);
+                    float espacio= 0;
+                    total+=(float)mbr.particion[i].part_size;
+                    espacio= ((double) mbr.particion[i].part_size / mbr.mbr_size)*100;
                     sprintf( append,"[label = \"Extendida \n%s\",fontname = \"Verdana\",fillcolor=red,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",mbr.particion[i].part_name);
                     fputs(append,archivo);
                     fputs("                 subgraph cluster_LOGICAS{",archivo);
@@ -1934,7 +2308,9 @@ void graficarDISCO(MBR mbr,char *ruta)
                                 sprintf(append,"%d",contador_sub);
                                 fputs(append,archivo);
                                 fputs("\" ",archivo);
-                                sprintf(append,"[label = \"Logica \n%s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",ebr.part_name);
+                                espacio= 0;
+                                espacio= ((double) ebr.part_size / mbr.mbr_size)*100;
+                                sprintf(append,"[label = \"Logica %f% \n%s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",(double)espacio,ebr.part_name);
                                 fputs(append,archivo);
                                 inicio =ebr.part_start+ebr.part_size;
                             }
@@ -1942,14 +2318,16 @@ void graficarDISCO(MBR mbr,char *ruta)
                             {
                                 salir=True;
                             }
-                            else
+                            else if(ebr.part_next>0)
                             {
                                 fputs("\n           ",archivo);
                                 fputs("\"",archivo);
                                 sprintf(append,"%d",contador_sub);
                                 fputs(append,archivo);
                                 fputs("\" ",archivo);
-                                sprintf(append,"[label = \"Logica \n %s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",ebr.part_name);
+                                espacio= 0;
+                                espacio= ((double) ebr.part_size / mbr.mbr_size)*100;
+                                sprintf(append,"[label = \"Logica %f% \n %s\",fontname = \"Verdana\",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];\n",(double)espacio,ebr.part_name);
                                 fputs(append,archivo);
                                 inicio =ebr.part_next;
                             }
@@ -1969,7 +2347,7 @@ void graficarDISCO(MBR mbr,char *ruta)
                 sprintf(append,"%d",contador_sub);
                 fputs(append,archivo);
                 fputs("\" ",archivo);
-                fputs( "[label = \"Libre\",fontname = \"Verdana\",fillcolor=gray,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",archivo);
+                fputs( "[label = \"Libre %f%\",fontname = \"Verdana\",fillcolor=gray,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];\n",archivo);
             }
             fputs("\n        }\n",archivo);
             contador_sub++;

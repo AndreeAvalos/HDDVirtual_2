@@ -2,30 +2,31 @@ digraph ArchivoMBR{
      subgraph cluster_DISCO{
          subgraph cluster_e{
 
-           "1" [label = "Libre",fontname = "Verdana",fillcolor=gray,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+           "23" [label =  "Primaria 24.674479% 
+ part12",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
 
         }
          subgraph cluster_c{
 
-           "2" [label = "Extendida 
+           "24" [label = "Extendida 
 part3",fontname = "Verdana",fillcolor=red,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
                  subgraph cluster_LOGICAS{
-           "3" [label = "Logica 
- part6",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
+           "25" [label = "Logica 3.906250% 
+ part14",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
-           "4" [label = "Logica 
+           "26" [label = "Logica 3.906250% 
  part7",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
-           "5" [label = "Logica 
+           "27" [label = "Logica 3.906250% 
  part8",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
-           "6" [label = "Logica 
+           "28" [label = "Logica 3.906250% 
  part9",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
-           "7" [label = "Logica 
+           "29" [label = "Logica 3.906250% 
  part10",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
-           "8" [label = "Logica 
+           "30" [label = "Logica 5.468750% 
 part11",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 1];
 
                }
@@ -33,14 +34,14 @@ part11",fontname = "Verdana",fillcolor=green,style = filled,labelloc=c,shape = r
         }
          subgraph cluster_b{
 
-           "10" [label =  "Primaria 
+           "32" [label =  "Primaria 25.000000% 
  part2",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
 
         }
          subgraph cluster_a{
 
-           "11" [label =  "Primaria 
- part_1",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
+           "33" [label =  "Primaria 25.000000% 
+ part1",fontname = "Verdana",fillcolor=yellow,style = filled,labelloc=c,shape = rectangle,fontsize = 15,height=5,width = 4];
 
         }
          subgraph cluster_MBR{
