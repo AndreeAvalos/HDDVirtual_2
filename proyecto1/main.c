@@ -28,6 +28,7 @@ char letras[25]= {'a','b','c','e','f','g','h','i','j','k','l','m','n','o','p','q
 int tamano_disco=0;
 int comando_valido=True;
 int desde_consola=True;
+int contador_logicas=0;
 #pragma endregion Globales
 
 #pragma region Validaciones
@@ -430,7 +431,7 @@ int main()
 {
     printf("--------------Primer Proyecto de Manejo e Implementos de Archivos------------\n");
     consola();
-    printf("---------------------------USTED ACABA DE SALIR-------------------------------");
+    printf("---------------------------USTED ACABA DE SALIR-------------------------------\n");
     return 0;
 
 }
@@ -439,7 +440,7 @@ void consola()
 {
     while(SalirPrograma!=True)
     {
-        desde_consola=False;
+        desde_consola=True;
         printf("                       --Ingrese el Comando a Realizar--\n");
         scanf("%[^\n]", linea);
         while(getchar()!='\n');
@@ -988,14 +989,6 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
 
                     else if(strcmp(typeParticion,"l")==0&&mbrAuxiliar.extend==True)
                     {
-                        printf("----------------------Atributos de Particion------------------------------\n");
-                        printf("Tamano de Particion: %d\n",sizeArchivo);
-                        printf("Unidad de Particion: %s\n",tipoArchivo);
-                        printf("Ruta fisica de Disco: %s\n",pathArchivo);
-                        printf("Tipo de Particion: %s\n",typeParticion);
-                        printf("Tipo de Ajuste: %s\n",fitParticion);
-                        printf("Nombre de Particion: %s\n",nameParticion);
-                        printf("--------------------------------------------------------------------------\n");
                         MBR aux = getMBR(pathArchivo);
                         Particion extendida = getExtendida(aux);//obtenemos el mbr luego la particion extendida
                         creada=False;
@@ -1025,6 +1018,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                 Particion extendida = getExtendida(aux);//obtenemos el mbr luego la particion extendida
                 creada=False;
                 crearLogica(extendida.part_start,(extendida.part_start+extendida.part_size));
+                return;
 
             }
             else
@@ -1033,13 +1027,90 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
         }
         else if(fdisk[7]==True)//si encuentra el parametro add
         {
+            printf("***********Entro a modificacion de Particiones*******\n");
+            MBR aux = getMBR(pathArchivo);
+            int i = 0;
+            int salir=False;
+            tamanoParticion=0;
 
+
+            int tamanoParticion=addParticion;
+            if(strcmp(unitArchivo,"k")==0)
+                tamanoParticion=tamanoParticion*1024;
+            else if(strcmp(unitArchivo,"m")==0)
+                tamanoParticion=tamanoParticion*1024*1024;
+            else
+                tamanoParticion=tamanoParticion*8;
+
+            if(tamanoParticion<0)
+            {
+                for(int i=0; i<4; i++)
+                {
+                    if(aux.part[i]==True)
+                    {
+                        if(strcmp(aux.particion[i].part_name,nameParticion)==0)
+                        {
+                            int restante=(aux.particion[i].part_size+tamanoParticion);
+                            if(aux.particion[i].part_type=='e')
+                            {
+                                int resultado = verificarTamano(aux.particion[i].part_start,(aux.particion[i].part_start+aux.particion[i].part_size+tamanoParticion));
+                                if(resultado==True)
+                                {
+                                    aux.particion[i].part_size=restante;
+                                    ActualizarMBR(aux,pathArchivo);
+                                    printf("---Se reducio el tamano de la particion %s ----\n",nameParticion);
+
+                                }
+                                else
+                                {
+                                    printf("---No se reducio el tamano de la particion %s ----\n",nameParticion);
+                                    return;
+
+                                }
+                            }
+                            else
+                            {
+                                if(restante>0)
+                                {
+                                    aux.particion[i].part_size=restante;
+                                    ActualizarMBR(aux,pathArchivo);
+                                    printf("---Se reducio el tamano de la particion %s ----\n",nameParticion);
+                                    return;
+                                }
+                                else
+                                {
+                                    printf("---El espacio a eliminar es mayor al de la particion----\n");
+                                    return;
+                                }
+
+                            }
+                        }
+                    }
+
+                }
+                //llego aca puede que sea logica
+                for(int i =0; i<4; i++)
+                {
+                    if(aux.part[i]==True)
+                    {
+                        if(aux.particion[i].part_type=='e')
+                        {
+                            int resultado = reducirLogica(aux.particion[i].part_start,tamanoParticion);
+                            if(resultado==True)
+                            return;
+                        }
+                    }
+
+                }
+                printf("*******No existe Particion*********\n\n");
+            }
         }
         else if(fdisk[5]==True)//si encuentra el parametro delete
         {
+            printf("***********Entro a eliminacion de Particiones*******\n");
             MBR aux = getMBR(pathArchivo);
             int salir = False;
-            int i=0;
+            contador_logicas=0;
             for(int i=0; i<4; i++)
             {
                 if(aux.part[i]==True)
@@ -1075,7 +1146,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
 
                             }
                             else
-                                printf("---No se puede eliminar particion extendida por que tiene particiones logicas---\n");
+                                printf("---No se puede eliminar particion extendida por que tiene particiones logicas---\n\n");
                             return;
 
                         }
@@ -1090,7 +1161,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                             mbrAuxiliar.part[i]=False;
                             mbrAuxiliar.particion[i]=nuevo;
                             ActualizarMBR(mbrAuxiliar,pathArchivo);
-                            printf("***Particion eliminada con exito*****\n");
+                            printf("***Particion eliminada con exito*****\n\n");
                             return;
 
                         }
@@ -1125,7 +1196,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                                     int tamano =ebr.part_size;
 
                                     ebr.part_fit='\0';
-                                    ebr.part_size=0;
+                                    ebr.part_size=tamano;
                                     strcpy(ebr.part_name,"LIBRE");
                                     ebr.part_status=False;
                                     rewind(archivo);
@@ -1137,6 +1208,7 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                                     {
                                         escribirParticion(inicio+sizeof(EBR),tamano,'\0',pathArchivo);
                                     }
+                                    printf("--Se elimino la particion logica--\n\n");
                                     return;
 
                                 }
@@ -1146,6 +1218,44 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                                     int existe = eliminarLogica(mbrAuxiliar.particion[i].part_start);
                                     if(existe==True)
                                     {
+                                        int inicio= mbrAuxiliar.particion[i].part_start;
+                                        int contador_aux=0;
+                                        for(int i=0; i<contador_logicas-1; i++)
+                                        {
+
+                                            EBR ebr;
+                                            FILE *archivo =fopen(pathArchivo,"rb");
+                                            if(archivo)
+                                            {
+                                                fseek(archivo,inicio,SEEK_SET);
+                                                fread(&ebr,sizeof(EBR),1,archivo);
+                                                fclose(archivo);
+                                                inicio+=ebr.part_size;
+                                                contador_aux=ebr.part_start;
+                                            }
+                                        }
+
+                                        EBR ebrTemp;
+                                        EBR ebr;
+                                        FILE *archivo =fopen(pathArchivo,"rb+");
+                                        if(archivo)
+                                        {
+                                            fseek(archivo,inicio,SEEK_SET);
+                                            fread(&ebrTemp,sizeof(EBR),1,archivo);
+                                            rewind(archivo);
+                                            fseek(archivo,contador_aux,SEEK_SET);
+                                            fread(&ebr,sizeof(EBR),1,archivo);
+                                            rewind(archivo);
+                                            ebr.part_next=ebrTemp.part_next;
+                                            fseek(archivo,contador_aux,SEEK_SET);
+                                            fwrite(&ebr,sizeof(EBR),1,archivo);
+                                            fclose(archivo);
+                                            if(strcmp(deleteParticion,"full")==0)
+                                            {
+                                                escribirParticion(ebr.part_start,ebr.part_size,'\0',pathArchivo);
+                                            }
+                                        }
+                                        printf("**Se elimino la particion logica**\n\n");
                                         return;
                                     }
                                 }
@@ -1154,14 +1264,14 @@ void FDISK(char *cmd,char *size, char *unit, char *path,char *type,char *fit,cha
                     }
                 }
             }
-            printf("---No existe particion----\n");
+            printf("---No existe particion----\n\n");
         }
     }
 }
 
 int eliminarLogica(int inicio)
 {
-
+    contador_logicas++;
     EBR ebr;
     FILE *archivo =fopen(pathArchivo,"rb+");
     if(archivo)
@@ -1183,7 +1293,7 @@ int eliminarLogica(int inicio)
             if(strcmp(ebr.part_name,nameParticion)==0)
                 return True;
             else
-                return existeLogica(ebr.part_next);
+                return eliminarLogica(ebr.part_next);
         }
     }
     else
@@ -1191,6 +1301,111 @@ int eliminarLogica(int inicio)
         return False;
     }
 }
+
+int reducirLogica(int inicio,int tamano)
+{
+    contador_logicas++;
+    EBR ebr;
+    int restante=0;
+    FILE *archivo =fopen(pathArchivo,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        if(ebr.part_next==0)
+        {
+            return False;
+        }
+
+        else if(ebr.part_next==-1)
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+            {
+                restante=ebr.part_size+tamano-sizeof(EBR);
+                if(restante>=0)
+                {
+                    ebr.part_size=restante;
+                    archivo=fopen(pathArchivo,"rb+");
+                    fseek(archivo,inicio,SEEK_SET);
+                    fwrite(&ebr,sizeof(EBR),1,archivo);
+                    fclose(archivo);
+                    printf("---Se reducio el tamano de la particion logica---\n");
+                    return True;
+                }
+                else
+                {
+                    printf("**** No se puede reducir el tamano de la particion logica *******\n");
+                }
+
+            }
+            else
+            {
+                return False;
+            }
+        }
+        else
+        {
+            if(strcmp(ebr.part_name,nameParticion)==0)
+            {
+                restante=ebr.part_size+tamano-sizeof(EBR);
+                if(restante>=0)
+                {
+                    ebr.part_size=restante;
+                    archivo=fopen(pathArchivo,"rb+");
+                    fseek(archivo,inicio,SEEK_SET);
+                    fwrite(&ebr,sizeof(EBR),1,archivo);
+                    fclose(archivo);
+                    printf("---Se reducio el tamano de la particion logica---\n");
+                    return True;
+                }
+                else
+                {
+                    printf("**** No se puede reducir el tamano de la particion logica *******\n");
+                    return False;
+                }
+            }
+            else
+                return reducirLogica(ebr.part_next,tamano);
+        }
+    }
+    else
+    {
+        return False;
+    }
+}
+
+int verificarTamano(int inicio,int tamano)
+{
+    contador_logicas++;
+    EBR ebr;
+    FILE *archivo =fopen(pathArchivo,"rb+");
+    if(archivo)
+    {
+        fseek(archivo,inicio,SEEK_SET);
+        fread(&ebr,sizeof(EBR),1,archivo);
+        fclose(archivo);
+        if(ebr.part_next==0)
+            return True;
+        else if(ebr.part_next==-1)
+        {
+            int ultimo = ebr.part_size+ebr.part_start;
+            if(ultimo<=tamano)
+                return True;
+            else
+                return False;
+        }
+        else
+        {
+            return verificarTamano(ebr.part_next,tamano);
+        }
+    }
+    else
+    {
+        return False;
+    }
+}
+
 
 void ActualizarMBR(MBR mbrActual,char *ruta)
 {
@@ -1813,6 +2028,15 @@ int validar(char *cmd)
         }
         else if(fdisk[5]==True && fdisk[2]==True&&fdisk[6]==True)
             return True;
+        else if(fdisk[2]==True && fdisk[7]==True&&fdisk[6]==True)
+        {
+            if(fdisk[1]==False)
+            {
+                tipoArchivo="Megabyte";
+                unitArchivo="m";
+            }
+            return True;
+        }
     }
     return False;
 
@@ -2248,7 +2472,7 @@ void graficarDISCO(MBR mbr,char *ruta)
     char line[1000];
     char append[50]; //New variable
 
-    FILE *archivo=fopen("DISK.dot","w+");
+    FILE *archivo=fopen("/home/andree/DISK.dot","wt+");
     float total=0;
     if(archivo)
     {
@@ -2361,7 +2585,7 @@ void graficarDISCO(MBR mbr,char *ruta)
 
     }
     fclose(archivo);
-    strcpy(line,"dot -Tpng DISK.dot -o ");
+    strcpy(line,"dot -Tpng /home/andree/DISK.dot -o ");
     strcat(line,pathArchivo);
     system(line);
 }
